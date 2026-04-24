@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Savoir Rouler à Vélo — Dynamique Territoriale 2024</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: #f6f6f8;
+      color: #1b1b35;
+    }
+
+    /* ── Header DSFR light ───────────────────────────────────────────── */
+    .page-header {
+      background: #fff;
+      border-top: 4px solid #000091;
+      border-bottom: 1px solid #e3e3fd;
+      padding: 1.1rem 1.5rem 1rem;
+    }
+    .page-header-inner { max-width: 1100px; margin: 0 auto; }
+    .page-header h1 {
+      margin: 0 0 .25rem;
+      font-size: clamp(1.15rem, 2.8vw, 1.6rem);
+      font-weight: 700;
+      color: #1b1b35;
+      letter-spacing: -.01em;
+    }
+    .page-header .subtitle {
+      margin: 0 0 .7rem;
+      font-size: clamp(.8rem, 1.8vw, .92rem);
+      color: #555;
+    }
+    .page-header .header-sources {
+      font-size: .72rem;
+      color: #888;
+    }
+    .page-header .header-sources a { color: #000091; text-decoration: none; }
+    .page-header .header-sources a:hover { text-decoration: underline; }
+    .header-sources-label {
+      font-weight: 700;
+      color: #1b1b35;
+      font-size: .78rem;
+      margin-right: .4rem;
+    }
+
+    /* ── Layout ──────────────────────────────────────────────────────── */
+    .main {
+      max-width: 1100px;
+      margin: 1.5rem auto;
+      padding: 0 1rem;
+    }
+    .section { margin-bottom: 2.5rem; }
+
+    .section-title {
+      font-size: 1rem;
+      font-weight: 700;
+      border-left: 4px solid #000091;
+      padding-left: .7rem;
+      margin: 0 0 1.1rem;
+      color: #1b1b35;
+    }
+    .sub-title {
+      font-size: .88rem;
+      font-weight: 600;
+      margin: 1.4rem 0 .7rem;
+      padding-left: .6rem;
+      color: #1b1b35;
+    }
+    .sub-title.blue { border-left: 3px solid #000091; }
+    .sub-title.green { border-left: 3px solid #18753c; }
+
+    /* ── Section nationale ───────────────────────────────────────────── */
+    .global-layout {
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      gap: 1.5rem;
+      align-items: center;
+      background: #fff;
+      border-radius: 8px;
+      padding: 1.25rem 1.5rem;
+      box-shadow: 0 1px 6px rgba(0,0,144,.07);
+    }
+    @media (max-width: 680px) {
+      .global-layout { grid-template-columns: 1fr; }
+    }
+
+    .kpis { display: flex; flex-direction: column; gap: .9rem; }
+    .kpi-card {
+      background: #f5f5fe;
+      border-radius: 6px;
+      padding: .85rem 1rem;
+      border-left: 3px solid #000091;
+    }
+    .kpi-value {
+      font-size: 1.7rem;
+      font-weight: 700;
+      color: #000091;
+      line-height: 1.1;
+    }
+    .kpi-label {
+      font-size: .73rem;
+      color: #555;
+      margin-top: .2rem;
+      line-height: 1.4;
+    }
+
+    .chart-wrap { min-width: 0; }
+    .chart-label {
+      font-size: .72rem;
+      color: #888;
+      margin-bottom: .4rem;
+    }
+    #area-chart svg { display: block; width: 100%; }
+    .grid line { stroke: #eef0f8; }
+    .grid .domain { display: none; }
+
+    /* ── Toggle granularité ──────────────────────────────────────────── */
+    .section-toggle { margin-bottom: 2rem; }
+
+    .toggle-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: .65rem;
+      background: #fff;
+      border-radius: 8px;
+      padding: 1.1rem 1.5rem 1rem;
+      box-shadow: 0 1px 6px rgba(0,0,144,.07);
+      border: 1px solid #e3e3fd;
+    }
+    .toggle-title {
+      font-size: .82rem;
+      font-weight: 600;
+      color: #333;
+    }
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .toggle-lbl {
+      font-size: .97rem;
+      font-weight: 600;
+      color: #bbb;
+      transition: color .2s;
+      min-width: 90px;
+      text-align: center;
+      cursor: pointer;
+    }
+    .toggle-lbl.active { color: #000091; }
+
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 3rem;
+      height: 1.6rem;
+      flex-shrink: 0;
+    }
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+      position: absolute;
+    }
+    .toggle-slider {
+      position: absolute;
+      inset: 0;
+      background: #6a6a6a;
+      border-radius: 1rem;
+      cursor: pointer;
+      transition: background .2s;
+    }
+    .toggle-slider::before {
+      content: '';
+      position: absolute;
+      width: 1.2rem;
+      height: 1.2rem;
+      left: .2rem;
+      top: 50%;
+      transform: translateY(-50%);
+      background: #fff;
+      border-radius: 50%;
+      transition: transform .2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,.25);
+    }
+    .toggle-switch input:checked + .toggle-slider {
+      background: #000091;
+    }
+    .toggle-switch input:checked + .toggle-slider::before {
+      transform: translate(1.4rem, -50%);
+    }
+    .toggle-switch input:focus-visible + .toggle-slider {
+      outline: 2px solid #0a76f6;
+      outline-offset: 2px;
+    }
+
+    /* ── Map ─────────────────────────────────────────────────────────── */
+    .map-wrap { position: relative; }
+    #map {
+      width: 100%;
+      height: 520px;
+      background: #e8edf5;
+      border-radius: 6px;
+    }
+    @media (max-width: 600px) { #map { height: 360px; } }
+
+    /* ── DROM insets ─────────────────────────────────────────────────── */
+    .drom-strip {
+      position: absolute;
+      bottom: 28px;
+      left: 10px;
+      z-index: 800;
+      display: grid;
+      grid-template-columns: repeat(3, 96px);
+      gap: 3px;
+      pointer-events: none;
+    }
+    .drom-item {
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-shadow: 0 2px 6px rgba(0,0,0,.18);
+      overflow: hidden;
+      pointer-events: all;
+    }
+    .drom-mini { width: 100%; height: 66px; }
+    .drom-name {
+      font-size: .58rem;
+      text-align: center;
+      padding: 2px 4px 3px;
+      color: #444;
+      border-top: 1px solid #eee;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.3;
+    }
+    .drom-name strong { display: block; font-weight: 700; color: #000091; }
+
+    /* ── Leaflet legend control ──────────────────────────────────────── */
+    .map-legend {
+      background: rgba(255,255,255,.93);
+      padding: .5rem .7rem;
+      border-radius: 6px;
+      font-size: .74rem;
+      line-height: 1.7;
+      box-shadow: 0 2px 8px rgba(0,0,144,.12);
+      border: 1px solid #e3e3fd;
+    }
+    .map-legend .leg-title {
+      font-weight: 600;
+      font-size: .68rem;
+      color: #555;
+      margin-bottom: .25rem;
+    }
+    .map-legend .leg-row {
+      display: flex;
+      align-items: center;
+      gap: .35rem;
+    }
+    .map-legend .leg-swatch {
+      display: inline-block;
+      width: 20px;
+      height: 11px;
+      border-radius: 2px;
+      border: 1px solid rgba(0,0,0,.07);
+      flex-shrink: 0;
+    }
+
+    /* ── Tooltip ─────────────────────────────────────────────────────── */
+    #tooltip {
+      position: fixed;
+      z-index: 2000;
+      display: none;
+      background: #fff;
+      border: 1px solid #d5d5e8;
+      border-radius: 6px;
+      padding: .7rem 1rem;
+      pointer-events: none;
+      font-size: .83rem;
+      line-height: 1.55;
+      box-shadow: 0 4px 16px rgba(0,0,144,.12);
+      max-width: 248px;
+    }
+    .t-nom  { font-weight: 700; font-size: .95rem; margin-bottom: .15rem; }
+    .t-ratio { font-size: 1.4rem; font-weight: 700; color: #000091; line-height: 1.1; }
+    .t-unit  { font-size: .67rem; color: #888; margin-bottom: .4rem; }
+    .t-sep   { border: none; border-top: 1px solid #eee; margin: .4rem 0; }
+    .t-line  { color: #444; }
+    .t-delta { font-weight: 600; margin-top: .3rem; }
+    .t-delta.pos { color: #18753c; }
+    .t-delta.neg { color: #ce0500; }
+
+    /* ── Cards top régions / départements ────────────────────────────── */
+    .cards-row {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: .6rem;
+    }
+    @media (max-width: 860px) { .cards-row { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 560px) { .cards-row { grid-template-columns: repeat(2, 1fr); } }
+
+    .card {
+      background: #fff;
+      border-radius: 6px;
+      padding: .85rem .95rem;
+      box-shadow: 0 1px 5px rgba(0,0,144,.07);
+    }
+    .card.blue  { border-top: 3px solid #000091; }
+    .card.green { border-top: 3px solid #18753c; }
+
+    .card-rank {
+      font-size: .64rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+    }
+    .card.blue  .card-rank { color: #000091; }
+    .card.green .card-rank { color: #18753c; }
+
+    .card-name {
+      font-size: .88rem;
+      font-weight: 600;
+      margin: .2rem 0 .15rem;
+      line-height: 1.25;
+      color: #1b1b35;
+    }
+    .card-name.long { font-size: .74rem; }
+
+    .map-indicator-label {
+      font-size: .82rem;
+      color: #555;
+      margin: -.3rem 0 .9rem;
+      padding-left: .7rem;
+      font-style: italic;
+    }
+    .card-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .card.blue  .card-value { color: #000091; }
+    .card.green .card-value { color: #18753c; }
+
+    .card-unit { font-size: .63rem; color: #aaa; margin-top: .15rem; }
+  </style>
+</head>
+<body>
+
+<header class="page-header">
+  <div class="page-header-inner">
+    <h1>Savoir Rouler à Vélo</h1>
+    <p class="subtitle">
+      Evolution temporelle et dynamique territoriale
+    </p>
+    <div class="header-sources">
+      <span class="header-sources-label">Sources</span>
+      Nombre d&rsquo;attestations délivrées :
+      <a href="https://data.sports.gouv.fr/explore/dataset/savoir-rouler-a-velo-interventions/" target="_blank" rel="noopener">data.sports.gouv.fr</a>
+      &ensp;·&ensp;
+      Nombre d&rsquo;élèves de l&rsquo;école élémentaire (CP au CM2) :
+      <a href="https://data.education.gouv.fr/explore/dataset/fr-en-ecoles-effectifs-nb_classes/" target="_blank" rel="noopener">data.education.gouv.fr</a>
+    </div>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- ── Section nationale ────────────────────────────────────────────── -->
+  <section class="section">
+    <h2 class="section-title">Vue d&rsquo;ensemble</h2>
+    <div class="global-layout">
+      <div class="kpis">
+        <div class="kpi-card">
+          <div class="kpi-value" id="kpi-total">—</div>
+          <div class="kpi-label">attestations délivrées en 2024</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-value" id="kpi-ratio">—</div>
+          <div class="kpi-label">pour 1&thinsp;000 élèves &mdash; ratio national 2024</div>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <div id="area-chart"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Toggle granularité ────────────────────────────────────────────── -->
+  <section class="section section-toggle">
+    <div class="toggle-wrap">
+      <p class="toggle-title">Choisissez votre maille géographique</p>
+      <div class="toggle-row">
+        <span class="toggle-lbl active" id="lbl-reg">Régions</span>
+        <label class="toggle-switch" for="toggle-granularite">
+          <input type="checkbox" id="toggle-granularite" role="switch" aria-label="Basculer entre régions et départements">
+          <span class="toggle-slider"></span>
+        </label>
+        <span class="toggle-lbl" id="lbl-dep">Départements</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Section carte ─────────────────────────────────────────────────── -->
+  <section class="section">
+    <h2 class="section-title">Dynamique Territoriale</h2>
+    <p class="map-indicator-label">Nombre d&rsquo;attestations délivrées pour 1&thinsp;000 élèves de l&rsquo;école élémentaire (CP au CM2)</p>
+    <div class="map-wrap">
+      <div id="map"></div>
+      <div class="drom-strip" id="drom-strip-reg"></div>
+    </div>
+    <div id="tooltip"></div>
+  </section>
+
+  <!-- ── Section top régions / départements ──────────────────────────── -->
+  <section class="section">
+    <h2 class="section-title" id="top-section-title">Les top régions</h2>
+
+    <h3 class="sub-title blue" id="top-actives-title">Les régions les plus actives en 2024</h3>
+    <div class="cards-row" id="top-actives"></div>
+
+    <h3 class="sub-title green" id="top-dyn-title">Les régions avec la meilleure dynamique en 2024</h3>
+    <div class="cards-row" id="top-dynamiques"></div>
+  </section>
+
+</div><!-- /.main -->
+
+<!-- ── Scripts ──────────────────────────────────────────────────────────────── -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/simple-statistics/7.8.3/simple-statistics.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+
+<script>
+// ── Config ────────────────────────────────────────────────────────────────────
+const COLORS         = ['#d4e6f5', '#8cbddb', '#4d8dc2', '#1a5fa0', '#002878'];
+const N_CLASSES      = 5;
+const DROM_CODES_REG = new Set(['01', '02', '03', '04', '06']);
+const DROM_ORDER_REG = ['01', '02', '04', '03', '06']; // Guadeloupe, Martinique, La Réunion, Guyane, Mayotte
+const DROM_CODES_DEP = new Set(['971', '972', '973', '974', '976']);
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function fmt(n, dec = 0) {
+  return Number(n).toLocaleString('fr-FR', {
+    minimumFractionDigits: dec,
+    maximumFractionDigits: dec,
+  });
+}
+function fmtK(n) {
+  const v = +n;
+  if (v >= 1e6) return (v / 1e6).toFixed(1).replace('.', ',') + ' M';
+  if (v >= 1e3) return Math.round(v / 1e3) + ' k';
+  return fmt(v);
+}
+function sign(n) { return n >= 0 ? '+' : ''; }
+
+// ── Carte Leaflet ─────────────────────────────────────────────────────────────
+const map = L.map('map', {
+  scrollWheelZoom: false,
+  keyboard: false,
+  minZoom: 4,
+  maxZoom: 9,
+}).setView([46.5, 2.3], 5);
+
+// ── Tooltip ───────────────────────────────────────────────────────────────────
+const tooltipEl = document.getElementById('tooltip');
+
+function showTooltip(d) {
+  if (!d) return;
+  const delta  = +d.delta_ratio;
+  const dClass = delta >= 0 ? 'pos' : 'neg';
+  tooltipEl.innerHTML = `
+    <div class="t-nom">${d.nom}</div>
+    <div class="t-ratio">${fmt(d.ratio_2024, 1)}</div>
+    <div class="t-unit">attestations pour 1 000 élèves de l'élémentaire — 2024</div>
+    <hr class="t-sep">
+    <div class="t-line"><strong>${fmt(d.nb_enfants_2024)}</strong> attestations délivrées</div>
+    <div class="t-line"><strong>${fmt(d.nb_interventions_2024)}</strong> interventions</div>
+    <div class="t-line"><strong>${fmt(d.nb_eleves_2024)}</strong> élèves de l'élémentaire</div>
+    <div class="t-delta ${dClass}">${sign(delta)}${fmt(delta, 1)} pt vs 2023</div>`;
+  tooltipEl.style.display = 'block';
+}
+
+function moveTooltip(e) {
+  const x  = e.originalEvent.clientX;
+  const y  = e.originalEvent.clientY;
+  const tw = tooltipEl.offsetWidth;
+  tooltipEl.style.left = (x + 16 + tw > window.innerWidth ? x - tw - 16 : x + 16) + 'px';
+  tooltipEl.style.top  = (y - 10) + 'px';
+}
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let currentLayer  = null;
+let currentLegend = null;
+
+// ── Chargement données ────────────────────────────────────────────────────────
+Promise.all([
+  fetch('data/regions.geojson').then(r => r.json()),
+  fetch('data/data_regions.json').then(r => r.json()),
+  fetch('data/data_national.json').then(r => r.json()).catch(() => null),
+  fetch('data/departements.geojson').then(r => r.json()),
+  fetch('data/data_departements.json').then(r => r.json()),
+])
+.then(([regGeo, regData, national, depGeo, depData]) => {
+
+  // ── Lookups ─────────────────────────────────────────────────────────────────
+  const regLookup = {};
+  regData.forEach(d => { regLookup[String(d.code_region)] = d; });
+
+  const depLookup = {};
+  depData.forEach(d => { depLookup[String(d.code_departement)] = d; });
+
+  // ── Séparation métropole / DROM ─────────────────────────────────────────────
+  const metroRegFeatures = regGeo.features.filter(f => !DROM_CODES_REG.has(String(f.properties.code)));
+  const dromRegFeatures  = regGeo.features.filter(f =>  DROM_CODES_REG.has(String(f.properties.code)));
+
+  const metroDepFeatures = depGeo.features.filter(f => !DROM_CODES_DEP.has(String(f.properties.code)));
+  const dromDepFeatures  = depGeo.features.filter(f =>  DROM_CODES_DEP.has(String(f.properties.code)));
+
+  // ── Échelles de couleur ─────────────────────────────────────────────────────
+  // Régions : Jenks (distribution resserrée, 18 entités)
+  function buildJenks(data, key) {
+    const ratios     = data.filter(d => d[key] > 0).map(d => +d[key]);
+    const breaks     = ss.jenks(ratios, N_CLASSES);
+    const thresholds = breaks.slice(1, N_CLASSES);
+    return {
+      scale: d3.scaleThreshold().domain(thresholds).range(COLORS),
+      legendBreaks: breaks,
+    };
+  }
+
+  // Départements : quantile (distribution équilibrée sur 100 entités)
+  function buildQuantile(data, key) {
+    const ratios = data.filter(d => d[key] > 0).map(d => +d[key]).sort(d3.ascending);
+    const scale  = d3.scaleQuantile().domain(ratios).range(COLORS);
+    const q      = scale.quantiles();
+    const legendBreaks = [ratios[0], ...q, ratios[ratios.length - 1]];
+    return { scale, legendBreaks };
+  }
+
+  const regCS = buildJenks(regData, 'ratio_2024');
+  const depCS = buildQuantile(depData, 'ratio_2024');
+
+  // ── Render carte ─────────────────────────────────────────────────────────────
+  function renderMap(mode) {
+    if (currentLayer)  { map.removeLayer(currentLayer);    currentLayer  = null; }
+    if (currentLegend) { map.removeControl(currentLegend); currentLegend = null; }
+
+    const isReg    = mode === 'regions';
+    const features = isReg ? metroRegFeatures : metroDepFeatures;
+    const lookup   = isReg ? regLookup : depLookup;
+    const cs       = isReg ? regCS : depCS;
+
+    function featureStyle(feature) {
+      const d = lookup[String(feature.properties.code)];
+      if (!d || !d.ratio_2024) {
+        return { fillColor: '#d0d0d8', weight: 1, color: '#fff', fillOpacity: .7 };
+      }
+      return { fillColor: cs.scale(+d.ratio_2024), weight: 1, color: '#fff', fillOpacity: .85 };
+    }
+
+    function onEachFeature(feature, layer) {
+      layer.on({
+        mouseover() {
+          layer.setStyle({ weight: 2.5, color: '#1b1b35', fillOpacity: .95 });
+          showTooltip(lookup[String(feature.properties.code)]);
+        },
+        mousemove: moveTooltip,
+        mouseout() {
+          layer.setStyle(featureStyle(feature));
+          tooltipEl.style.display = 'none';
+        },
+      });
+    }
+
+    currentLayer = L.geoJSON(
+      { type: 'FeatureCollection', features },
+      { style: featureStyle, onEachFeature }
+    ).addTo(map);
+    map.fitBounds(currentLayer.getBounds(), { padding: [10, 10] });
+
+    // Légende
+    currentLegend = L.control({ position: 'bottomright' });
+    currentLegend.onAdd = function() {
+      const div = L.DomUtil.create('div', 'map-legend');
+      const lb  = cs.legendBreaks;
+      const rows = COLORS.map((color, i) => {
+        const lo = lb[i].toFixed(1);
+        const hi = lb[i + 1].toFixed(1);
+        return `<div class="leg-row">
+          <span class="leg-swatch" style="background:${color}"></span>
+          <span>${lo} – ${hi}</span>
+        </div>`;
+      }).join('');
+      div.innerHTML = `<div class="leg-title">Attestations / 1 000 élèves</div>${rows}`;
+      return div;
+    };
+    currentLegend.addTo(map);
+
+    document.getElementById('drom-strip-reg').style.display = isReg ? '' : 'none';
+  }
+
+  // ── DROM insets — factory générique ─────────────────────────────────────────
+  // Retourne les instances {miniMap, miniLayer} pour permettre invalidateSize() après affichage
+  function buildDromStrip(stripId, dromFeatures, dromOrder, lookup, cs) {
+    const strip      = document.getElementById(stripId);
+    const byCode     = {};
+    dromFeatures.forEach(f => { byCode[String(f.properties.code)] = f; });
+    const instances  = [];
+
+    dromOrder.forEach(code => {
+      const feature = byCode[code];
+      if (!feature) return;
+      const d = lookup[code];
+
+      const item    = document.createElement('div');
+      item.className = 'drom-item';
+
+      const mapDiv  = document.createElement('div');
+      mapDiv.className = 'drom-mini';
+      mapDiv.id = `${stripId}-${code}`;
+
+      const nameDiv = document.createElement('div');
+      nameDiv.className = 'drom-name';
+      nameDiv.innerHTML = `<strong>${d ? fmt(d.ratio_2024, 1) : '—'}</strong>${feature.properties.nom}`;
+
+      item.appendChild(mapDiv);
+      item.appendChild(nameDiv);
+      strip.appendChild(item);
+
+      const miniMap = L.map(mapDiv.id, {
+        zoomControl: false, attributionControl: false,
+        dragging: false, scrollWheelZoom: false,
+        keyboard: false, doubleClickZoom: false, touchZoom: false,
+      });
+
+      const fillColor = d && d.ratio_2024 ? cs.scale(+d.ratio_2024) : '#d0d0d8';
+      const miniLayer = L.geoJSON(
+        { type: 'FeatureCollection', features: [feature] },
+        { style: () => ({ fillColor, weight: 1, color: '#fff', fillOpacity: .85 }) }
+      ).addTo(miniMap);
+      miniMap.fitBounds(miniLayer.getBounds(), { padding: [3, 3] });
+
+      miniLayer.on('mouseover', () => { showTooltip(d); });
+      miniLayer.on('mousemove', e => {
+        const x = e.originalEvent.clientX;
+        const y = e.originalEvent.clientY;
+        const tw = tooltipEl.offsetWidth;
+        tooltipEl.style.left = (x + 16 + tw > window.innerWidth ? x - tw - 16 : x + 16) + 'px';
+        tooltipEl.style.top  = (y - 10) + 'px';
+      });
+      miniLayer.on('mouseout', () => { tooltipEl.style.display = 'none'; });
+
+      instances.push({ miniMap, miniLayer });
+    });
+
+    return instances;
+  }
+
+  buildDromStrip('drom-strip-reg', dromRegFeatures, DROM_ORDER_REG, regLookup, regCS);
+
+  // ── KPIs nationaux ──────────────────────────────────────────────────────────
+  const nat2024      = national && national.find(d => +d.annee === 2024);
+  const totalAtt2024 = nat2024 ? +nat2024.nb_attestations
+                                : regData.reduce((s, d) => s + (+d.nb_enfants_2024 || 0), 0);
+  const totalElv2024 = regData.reduce((s, d) => s + (+d.nb_eleves_2024 || 0), 0);
+  document.getElementById('kpi-total').textContent = fmtK(totalAtt2024);
+  document.getElementById('kpi-ratio').textContent = fmt(totalAtt2024 / totalElv2024 * 1000, 1);
+
+  // ── Area chart ──────────────────────────────────────────────────────────────
+  if (national && national.length) {
+    buildAreaChart(national, document.getElementById('area-chart'));
+  }
+
+  // ── Top cards ────────────────────────────────────────────────────────────────
+  function renderTopCards(mode) {
+    const isReg  = mode === 'regions';
+    const data   = isReg ? regData : depData;
+    const maille = isReg ? 'régions' : 'départements';
+
+    document.getElementById('top-section-title').textContent = `Les top ${maille}`;
+    // accord : régions (fém.) → actives ; départements (masc.) → actifs
+    const actifLabel = isReg ? 'actives' : 'actifs';
+    document.getElementById('top-actives-title').textContent =
+      `Les ${maille} les plus ${actifLabel} en 2024`;
+    document.getElementById('top-dyn-title').textContent =
+      `Les ${maille} avec la meilleure dynamique en 2024`;
+
+    const top5actives = [...data]
+      .filter(d => d.ratio_2024 > 0)
+      .sort((a, b) => (+b.ratio_2024) - (+a.ratio_2024))
+      .slice(0, 5);
+
+    document.getElementById('top-actives').innerHTML = top5actives.map((d, i) => `
+      <div class="card blue">
+        <div class="card-rank"># ${i + 1}</div>
+        <div class="card-name${d.nom.length > 20 ? ' long' : ''}">${d.nom}</div>
+        <div class="card-value">${fmt(d.ratio_2024, 1)}</div>
+        <div class="card-unit">attestations / 1 000 élèves</div>
+      </div>`).join('');
+
+    const top5dyn = [...data]
+      .filter(d => d.ratio_2023 > 0 && d.ratio_2024 > 0 && d.delta_ratio != null)
+      .sort((a, b) => (+b.delta_ratio) - (+a.delta_ratio))
+      .slice(0, 5);
+
+    document.getElementById('top-dynamiques').innerHTML = top5dyn.map((d, i) => {
+      const delta = +d.delta_ratio;
+      return `
+      <div class="card green">
+        <div class="card-rank"># ${i + 1}</div>
+        <div class="card-name${d.nom.length > 20 ? ' long' : ''}">${d.nom}</div>
+        <div class="card-value">${sign(delta)}${fmt(delta, 1)} pt</div>
+        <div class="card-unit">progression 2023 → 2024</div>
+      </div>`;
+    }).join('');
+  }
+
+  // ── Toggle ───────────────────────────────────────────────────────────────────
+  document.getElementById('toggle-granularite').addEventListener('change', function() {
+    const mode = this.checked ? 'departements' : 'regions';
+    document.getElementById('lbl-reg').classList.toggle('active', !this.checked);
+    document.getElementById('lbl-dep').classList.toggle('active',  this.checked);
+    renderMap(mode);
+    renderTopCards(mode);
+  });
+
+  // ── Init ─────────────────────────────────────────────────────────────────────
+  renderMap('regions');
+  renderTopCards('regions');
+
+})
+.catch(err => {
+  document.getElementById('map').insertAdjacentHTML(
+    'afterend',
+    `<p style="color:#ce0500;margin-top:1rem">
+      Erreur de chargement : ${err.message}.<br>
+      Lancez un serveur local : <code>python3 -m http.server</code>
+    </p>`
+  );
+});
+
+// ── Area chart D3 ─────────────────────────────────────────────────────────────
+function buildAreaChart(national, container) {
+  const totalW = Math.max(container.clientWidth || 500, 280);
+  const totalH = 190;
+  const m = { top: 22, right: 20, bottom: 26, left: 58 };
+  const W = totalW - m.left - m.right;
+  const H = totalH - m.top - m.bottom;
+
+  const svg = d3.select(container)
+    .append('svg')
+    .attr('viewBox', `0 0 ${totalW} ${totalH}`)
+    .attr('width', '100%')
+    .attr('preserveAspectRatio', 'xMidYMid meet');
+
+  const g = svg.append('g').attr('transform', `translate(${m.left},${m.top})`);
+
+  const years = national.map(d => d.annee);
+  const x = d3.scaleLinear().domain([d3.min(years), d3.max(years)]).range([0, W]);
+  const y = d3.scaleLinear()
+    .domain([0, d3.max(national, d => +d.nb_attestations) * 1.18])
+    .range([H, 0]);
+
+  g.append('g')
+    .attr('class', 'grid')
+    .call(d3.axisLeft(y).ticks(4).tickSize(-W).tickFormat(''))
+    .call(ax => ax.select('.domain').remove());
+
+  g.append('path')
+    .datum(national)
+    .attr('fill', '#d4e6f5')
+    .attr('d', d3.area()
+      .x(d => x(d.annee))
+      .y0(H).y1(d => y(+d.nb_attestations))
+      .curve(d3.curveMonotoneX));
+
+  g.append('path')
+    .datum(national)
+    .attr('fill', 'none')
+    .attr('stroke', '#000091')
+    .attr('stroke-width', 2.5)
+    .attr('d', d3.line()
+      .x(d => x(d.annee))
+      .y(d => y(+d.nb_attestations))
+      .curve(d3.curveMonotoneX));
+
+  g.selectAll('circle')
+    .data(national).join('circle')
+    .attr('cx', d => x(d.annee))
+    .attr('cy', d => y(+d.nb_attestations))
+    .attr('r', 4)
+    .attr('fill', '#000091');
+
+  g.selectAll('.val-lbl')
+    .data(national).join('text')
+    .attr('class', 'val-lbl')
+    .attr('x', d => x(d.annee))
+    .attr('y', d => y(+d.nb_attestations) - 8)
+    .attr('text-anchor', 'middle')
+    .attr('font-size', 10)
+    .attr('fill', '#333')
+    .text(d => fmtK(+d.nb_attestations));
+
+  g.append('g')
+    .attr('transform', `translate(0,${H})`)
+    .call(d3.axisBottom(x).tickValues(years).tickFormat(d3.format('d')))
+    .call(ax => { ax.select('.domain').attr('stroke', '#ccc'); ax.selectAll('.tick line').attr('stroke', '#ccc'); });
+
+  g.append('g')
+    .call(d3.axisLeft(y).ticks(4).tickFormat(n => fmtK(n)))
+    .call(ax => { ax.select('.domain').remove(); ax.selectAll('.tick line').attr('stroke', '#ccc'); });
+}
+</script>
+</body>
+</html>

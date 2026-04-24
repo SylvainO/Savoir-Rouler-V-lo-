@@ -1,0 +1,15 @@
+# Claude Code
+.claude/
+
+# Python
+requirements.txt
+
+# Données brutes régénérables (fetch_data.py)
+data/*_raw.csv
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS
+.DS_Store
