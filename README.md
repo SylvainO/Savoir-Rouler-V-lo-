@@ -5,7 +5,6 @@ Tableau de bord interactif présentant la dynamique territoriale du dispositif *
 - **Carte choroplèthe** : ratio d'attestations délivrées pour 1 000 élèves du primaire, par région et par département (2024)
 - **KPI national** : ratio agrégé pour la France entière en 2024
 - **Dynamique 2023 → 2024** : évolution du ratio par territoire (delta en points)
-- **Palmarès régional** : classement des régions avec la meilleure progression en 2024
 - **Évolution temporelle** : série nationale des attestations délivrées de 2021 à 2025
 
 ## Sources des données
@@ -22,7 +21,7 @@ Tableau de bord interactif présentant la dynamique territoriale du dispositif *
 |---|---|
 | Cartographie | [Leaflet](https://leafletjs.com/) v1.9 |
 | Visualisation | [D3.js](https://d3js.org/) v7 |
-| Classification | [simple-statistics](https://simplestatistics.org/) v7 (Jenks, quantile) |
+| Classification | [simple-statistics](https://simplestatistics.org/) v7 (Jenks pour les régions, quantile pour les départements) |
 | Rendu | HTML5 / CSS3 / SVG |
 | Mise à jour des données | Python 3 (`fetch_data.py`) |
 
@@ -46,7 +45,7 @@ Tableau de bord interactif présentant la dynamique territoriale du dispositif *
 
 ## Mise à jour des données
 
-Les données sont chargées depuis des fichiers JSON statiques dans `data/`. Pour les rafraîchir depuis les sources officielles :
+Les données sont chargées depuis des fichiers JSON statiques dans `data/`. Pour les rafraîchir depuis les sources Data Education et Data Sports :
 
 ```bash
 pip install -r requirements.txt
