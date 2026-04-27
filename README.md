@@ -12,7 +12,7 @@ Tableau de bord interactif présentant la dynamique territoriale du dispositif *
 | Données | Source |
 |---|---|
 | Attestations délivrées (interventions Savoir Rouler à Vélo 2021–2025) | [data.sports.gouv.fr](https://data.sports.gouv.fr/explore/dataset/savoir-rouler-a-velo-interventions/) |
-| Effectifs élèves élémentaire hors ULIS (2023–2024) | [data.education.gouv.fr](https://data.education.gouv.fr/explore/dataset/fr-en-ecoles-effectifs-nb_classes/) |
+| Effectifs élèves élémentaire (2023–2024) | [data.education.gouv.fr](https://data.education.gouv.fr/explore/dataset/fr-en-ecoles-effectifs-nb_classes/) |
 | Contours géographiques régions et départements (métropole + DROM) | [gregoiredavid/france-geojson](https://github.com/gregoiredavid/france-geojson) (GitHub) |
 
 ## Technologies utilisées
